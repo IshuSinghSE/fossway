@@ -1,7 +1,7 @@
 'use client';
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Search, Filter, Star, GitBranch, Clock, Users, ExternalLink, Github, CheckCircle, X, RefreshCw } from "lucide-react";
+import { ArrowLeft, Search, Star, GitBranch, Clock, ExternalLink, Github, X, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";

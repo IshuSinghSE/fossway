@@ -125,7 +125,7 @@ export function Community() {
             {/* Testimonial */}
             <div className="glass rounded-2xl p-6 border border-white/10">
               <p className="text-white/80 italic mb-4">
-                "FOSSWay helped me find my first meaningful open source contribution. The AI matching is spot-on!"
+                &quot;FOSSWay helped me find my first meaningful open source contribution. The AI matching is spot-on!&quot;
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 flex items-center justify-center text-white font-semibold">

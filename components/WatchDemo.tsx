@@ -48,7 +48,7 @@ export function WatchDemo() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
-  const [volume, setVolume] = useState(80);
+  const [volume] = useState(80);
   const totalDuration = 165; // 2:45 in seconds
 
   const formatTime = (seconds: number) => {

@@ -1,4 +1,4 @@
-import { Heart, Users, Code, Globe, Lightbulb, Shield, Zap, Target } from "lucide-react";
+import { Heart, Users, Globe, Lightbulb, Shield, Target } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 const values = [
@@ -61,7 +61,7 @@ export function About() {
           </h2>
           <p className="text-2xl text-white/70 max-w-4xl mx-auto leading-relaxed">
             FOSSWay was born from a simple observation: talented developers everywhere want to contribute to open source, 
-            but don't know where to start. We're changing that story.
+            but don&apos;t know where to start. We&apos;re changing that story.
           </p>
         </div>
 
@@ -74,7 +74,7 @@ export function About() {
               <div className="space-y-4 text-lg text-white/80 leading-relaxed">
                 <p>
                   In the world of software development, open source is everywhere. The applications we use, 
-                  the frameworks we build with, the tools that power our daily lives - they're all built 
+                  the frameworks we build with, the tools that power our daily lives - they&apos;re all built 
                   by communities of passionate developers.
                 </p>
                 <p>
@@ -181,8 +181,8 @@ export function About() {
             <div className="relative z-10 space-y-6">
               <h3 className="text-3xl font-bold text-white">Join Our Movement</h3>
               <p className="text-xl text-white/70 max-w-2xl mx-auto leading-relaxed">
-                Be part of the revolution that's making open source accessible to everyone. 
-                Together, we're building a more inclusive and innovative future.
+                Be part of the revolution that&apos;s making open source accessible to everyone. 
+                Together, we&apos;re building a more inclusive and innovative future.
               </p>
               
               {/* Stats row */}

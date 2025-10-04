@@ -103,7 +103,7 @@ export function Goals() {
         {/* Impact Goals */}
         <div className="mb-24">
           <h3 className="text-3xl font-bold text-center mb-12 text-white">
-            Measurable Impact We're Driving
+            Measurable Impact We&apos;re Driving
           </h3>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">

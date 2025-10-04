@@ -218,36 +218,3 @@ export function EnhancedHero() {
     </section>
   );
 }
-
-// Add custom animations to globals.css
-const customAnimations = `
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
-}
-
-@keyframes float-delayed {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-15px); }
-}
-
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-
-.animate-float-delayed {
-  animation: float-delayed 3s ease-in-out infinite 1.5s;
-}
-
-.perspective-1000 {
-  perspective: 1000px;
-}
-
-.rotate-y-6 {
-  transform: rotateY(6deg);
-}
-
-.rotate-y-3 {
-  transform: rotateY(3deg);
-}
-`;

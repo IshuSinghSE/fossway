@@ -1,4 +1,4 @@
-import { LogIn, Scan, Zap, Rocket, ArrowRight, CheckCircle, Code, Target } from "lucide-react";
+import { LogIn, Scan, Rocket, ArrowRight, CheckCircle, Code, Target } from "lucide-react";
 import { Button } from "./ui/button";
 
 const processSteps = [
@@ -216,7 +216,7 @@ export function EnhancedProcess() {
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/10 via-purple-500/10 to-pink-500/10"></div>
             <div className="relative z-10">
               <h3 className="text-2xl font-bold mb-4 text-white">Ready to Transform Your Open Source Journey?</h3>
-              <p className="text-white/70 mb-6 text-lg">Join thousands of developers who've found their perfect first contribution through FOSSWay.</p>
+              <p className="text-white/70 mb-6 text-lg">Join thousands of developers who&apos;ve found their perfect first contribution through FOSSWay.</p>
               <Button 
                 size="lg"
                 className="bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 hover:from-cyan-500 hover:via-purple-600 hover:to-pink-600 text-white border-0 shadow-lg hover:shadow-cyan-500/25 transition-all duration-300 text-lg px-8 py-6 rounded-xl group"

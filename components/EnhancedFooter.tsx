@@ -1,4 +1,4 @@
-import { Rocket, Github, Twitter, Mail, ExternalLink, MapPin, Heart, Code, Users } from "lucide-react";
+import { Rocket, Github, Twitter, Mail, ExternalLink, MapPin, Heart, Users } from "lucide-react";
 import Link from "next/link";
 
 export function EnhancedFooter() {
