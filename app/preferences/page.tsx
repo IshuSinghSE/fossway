@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { PreferencesForm } from "@/components/preferences/PreferencesForm";
+import GitHubProfileSync from "@/components/GitHubProfileSync";
 import { getUserPreferences } from "@/services/preferences";
 
 export default async function PreferencesPage() {
@@ -26,7 +27,10 @@ export default async function PreferencesPage() {
           </p>
         </div>
 
-        <PreferencesForm userId={user.id} initialPreferences={preferences} />
+        <div className="space-y-6">
+          <GitHubProfileSync />
+          <PreferencesForm userId={user.id} initialPreferences={preferences} />
+        </div>
       </div>
     </div>
   );

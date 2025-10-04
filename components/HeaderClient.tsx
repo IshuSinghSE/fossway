@@ -68,7 +68,7 @@ export function HeaderClient({ user, children }: HeaderClientProps) {
               </>
             ) : (
               <>
-                <Button 
+                {/* <Button 
                   variant="outline" 
                   size="sm"
                   asChild
@@ -78,7 +78,7 @@ export function HeaderClient({ user, children }: HeaderClientProps) {
                     <Github className="w-4 h-4 mr-2" />
                     Sign in with GitHub
                   </Link>
-                </Button>
+                </Button> */}
                 <Button 
                   size="sm"
                   asChild
@@ -126,7 +126,7 @@ export function HeaderClient({ user, children }: HeaderClientProps) {
                 </div>
               ) : (
                 <>
-                  <Button 
+                  {/* <Button 
                     variant="outline" 
                     size="sm"
                     asChild
@@ -136,7 +136,7 @@ export function HeaderClient({ user, children }: HeaderClientProps) {
                       <Github className="w-4 h-4 mr-2" />
                       Sign in with GitHub
                     </Link>
-                  </Button>
+                  </Button> */}
                   <Button 
                     size="sm"
                     asChild
