@@ -1,4 +1,4 @@
-import { Header } from "@/components/Header";
+import { Header } from "@/components/HeaderServer";
 import { EnhancedHero } from "@/components/EnhancedHero";
 import { Features } from "@/components/Features";
 import { EnhancedProcess } from "@/components/EnhancedProcess";
