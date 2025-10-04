@@ -56,14 +56,14 @@ export function Header() {
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-4">
             <ThemeToggle />
-            <Button 
+            {/* <Button 
               variant="outline" 
               size="sm"
               className="glass border-border text-foreground hover:border-primary/50 hover:bg-accent/10 transition-all duration-300"
             >
               <Github className="w-4 h-4 mr-2" />
               Sign in with GitHub
-            </Button>
+            </Button> */}
             <Button 
               size="sm"
               asChild

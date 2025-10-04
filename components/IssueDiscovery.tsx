@@ -1,10 +1,14 @@
 'use client';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Search, Star, GitBranch, Clock, ExternalLink, Github, X, RefreshCw } from "lucide-react";
+import { ArrowLeft, Search, Star, GitBranch, Clock, ExternalLink, Github, X, RefreshCw, Bookmark, BookmarkCheck } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
+import { trackActivity } from "@/services/activity";
+import { saveIssue, unsaveIssue } from "@/services/saved-issues";
+import type { User } from "@supabase/supabase-js";
+import type { UserPreferences } from "@/lib/types/database";
 
 interface Issue {
   id: string;
@@ -19,6 +23,22 @@ interface Issue {
   author: string;
   createdAt: string;
   url: string;
+  isSaved?: boolean;
+}
+
+interface OptionItem {
+  id: string;
+  value: string;
+  label: string;
+  icon: string;
+}
+
+interface IssueDiscoveryProps {
+  user: User;
+  preferences: UserPreferences | null;
+  availableLanguages: OptionItem[];
+  availableGroups: OptionItem[];
+  availableContributions: OptionItem[];
 }
 
 const mockIssues: Issue[] = [
@@ -94,16 +114,48 @@ const mockIssues: Issue[] = [
   }
 ];
 
-const languages = ["All", "JavaScript", "Python", "TypeScript", "CSS", "Java", "Go", "Rust", "SQL"];
 const difficulties = ["All", "Beginner", "Intermediate", "Advanced"];
 const timeRanges = ["All", "1-3 hours", "4-8 hours", "8+ hours"];
 
-export function IssueDiscovery() {
+export function IssueDiscovery({ 
+  user, 
+  preferences, 
+  availableLanguages
+}: IssueDiscoveryProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState("All");
   const [selectedTimeRange, setSelectedTimeRange] = useState("All");
   const [isLoading, setIsLoading] = useState(false);
+  const [savedIssueIds, setSavedIssueIds] = useState<Set<string>>(new Set());
+
+  // Generate language options from available languages
+  const languages = ["All", ...availableLanguages.map(lang => lang.label)];
+
+  // Set default language from user preferences
+  useEffect(() => {
+    if (preferences && preferences.languages.length > 0) {
+      const firstLang = preferences.languages[0];
+      const matchingLang = availableLanguages.find(
+        lang => lang.value === firstLang.toLowerCase() || lang.label === firstLang
+      );
+      if (matchingLang) {
+        setSelectedLanguage(matchingLang.label);
+      }
+    }
+  }, [preferences, availableLanguages]);
+
+  // Set default difficulty from user experience level
+  useEffect(() => {
+    if (preferences?.experience_level) {
+      const levelMap: Record<string, string> = {
+        'beginner': 'Beginner',
+        'intermediate': 'Intermediate',
+        'advanced': 'Advanced'
+      };
+      setSelectedDifficulty(levelMap[preferences.experience_level] || "All");
+    }
+  }, [preferences]);
 
   const filteredIssues = mockIssues.filter(issue => {
     const matchesSearch = issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -123,9 +175,44 @@ export function IssueDiscovery() {
 
   const handleRefresh = () => {
     setIsLoading(true);
+    // In production, this would fetch from GitHub API and cache in database
     setTimeout(() => {
       setIsLoading(false);
     }, 2000);
+  };
+
+  const handleIssueClick = async (issueId: string) => {
+    // Track that user viewed this issue
+    try {
+      // In production, you'd convert string ID to database issue ID
+      const dbIssueId = parseInt(issueId);
+      if (!isNaN(dbIssueId)) {
+        await trackActivity(user.id, dbIssueId, 'viewed');
+      }
+    } catch (error) {
+      console.error('Error tracking activity:', error);
+    }
+  };
+
+  const handleSaveToggle = async (issueId: string) => {
+    try {
+      const dbIssueId = parseInt(issueId);
+      if (isNaN(dbIssueId)) return;
+
+      if (savedIssueIds.has(issueId)) {
+        await unsaveIssue(user.id, dbIssueId);
+        setSavedIssueIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(issueId);
+          return newSet;
+        });
+      } else {
+        await saveIssue(user.id, dbIssueId);
+        setSavedIssueIds(prev => new Set(prev).add(issueId));
+      }
+    } catch (error) {
+      console.error('Error toggling save:', error);
+    }
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -167,8 +254,25 @@ export function IssueDiscovery() {
           </h1>
           
           <p className="text-xl text-white/70 max-w-2xl mx-auto">
-            Discover beginner-friendly open source issues tailored to your skills and interests
+            {preferences && preferences.languages.length > 0 
+              ? `Personalized for ${preferences.languages.join(', ')} developers`
+              : "Discover beginner-friendly open source issues tailored to your skills"
+            }
           </p>
+          
+          {!preferences && (
+            <div className="mt-4">
+              <Button
+                asChild
+                variant="outline"
+                className="glass border-cyan-400/30 text-cyan-400 hover:bg-cyan-400/10"
+              >
+                <Link href="/preferences">
+                  Set Your Preferences
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -355,15 +459,40 @@ export function IssueDiscovery() {
                       <div className="text-white/60 text-sm">
                         Created {issue.createdAt} by {issue.author}
                       </div>
-                      <Button
-                        asChild
-                        className="bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-500 hover:to-purple-600 text-white border-0 group/btn"
-                      >
-                        <a href={issue.url} target="_blank" rel="noopener noreferrer">
-                          View Issue
-                          <ExternalLink className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
-                        </a>
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSaveToggle(issue.id)}
+                          className="glass border-white/20 hover:border-cyan-400/50"
+                        >
+                          {savedIssueIds.has(issue.id) ? (
+                            <>
+                              <BookmarkCheck className="w-4 h-4 mr-2 text-cyan-400" />
+                              Saved
+                            </>
+                          ) : (
+                            <>
+                              <Bookmark className="w-4 h-4 mr-2" />
+                              Save
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          asChild
+                          className="bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-500 hover:to-purple-600 text-white border-0 group/btn"
+                        >
+                          <a 
+                            href={issue.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            onClick={() => handleIssueClick(issue.id)}
+                          >
+                            View Issue
+                            <ExternalLink className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                          </a>
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
