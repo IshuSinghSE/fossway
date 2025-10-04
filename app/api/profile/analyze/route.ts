@@ -85,20 +85,19 @@ export async function POST() {
     const { error: repoError } = await supabase
       .from('repositories')
       .upsert(
-        profileData.repos.slice(0, 50).map(repo => ({
-          user_id: user.id,
-          github_id: `${profile.login}/${repo.name}`,
-          name: repo.name,
-          full_name: repo.full_name,
+        profileData.repos.slice(0, 10).map(repo => ({
+          repo_name: repo.full_name,
+          owner: profile.login,
           description: repo.description,
           language: repo.language,
-          stars_count: repo.stargazers_count,
+          stars: repo.stargazers_count,
+          forks: repo.forks_count,
           topics: repo.topics,
-          last_updated: repo.updated_at,
-          is_fork: false, // Would need additional API call to determine
+          url: `https://github.com/${repo.full_name}`,
+          pushed_at: repo.pushed_at,
         })),
         { 
-          onConflict: 'github_id',
+          onConflict: 'repo_name',
           ignoreDuplicates: false 
         }
       );
@@ -122,11 +121,8 @@ export async function POST() {
       .from('ai_recommendations')
       .upsert({
         user_id: user.id,
-        recommended_repos: [],
-        recommended_issues: [],
-        skill_match_score: skillProfile.score,
-        reasoning: `Profiled based on ${skillProfile.totalRepos} repositories, ${skillProfile.languages.length} languages, and ${skillProfile.topics.length} topics.`,
-        metadata: recommendations,
+        recommendations: recommendations,
+        context: `Profiled based on ${skillProfile.totalRepos} repositories, ${skillProfile.languages.length} languages, and ${skillProfile.topics.length} topics.`,
       }, {
         onConflict: 'user_id',
         ignoreDuplicates: false

@@ -77,7 +77,7 @@ export async function fetchGitHubProfile(username: string): Promise<GitHubUserPr
 /**
  * Fetch user repositories
  */
-export async function fetchGitHubRepos(username: string, maxRepos: number = 100): Promise<GitHubRepo[]> {
+export async function fetchGitHubRepos(username: string, maxRepos: number = 10): Promise<GitHubRepo[]> {
   try {
     const { data } = await octokit.repos.listForUser({
       username,
@@ -88,43 +88,22 @@ export async function fetchGitHubRepos(username: string, maxRepos: number = 100)
 
     const reposWithTopics = await Promise.all(
       data.map(async (repo) => {
-        try {
-          const { data: topicsData } = await octokit.repos.getAllTopics({
-            owner: username,
-            repo: repo.name,
-          });
-
-          return {
-            name: repo.name,
-            full_name: repo.full_name,
-            description: repo.description,
-            language: repo.language || null,
-            stargazers_count: repo.stargazers_count || 0,
-            forks_count: repo.forks_count || 0,
-            topics: topicsData.names,
-            pushed_at: repo.pushed_at || '',
-            created_at: repo.created_at || '',
-            updated_at: repo.updated_at || '',
-            size: repo.size || 0,
-            default_branch: repo.default_branch || 'main',
-          };
-        } catch {
-          // If topics fetch fails, return repo without topics
-          return {
-            name: repo.name,
-            full_name: repo.full_name,
-            description: repo.description,
-            language: repo.language || null,
-            stargazers_count: repo.stargazers_count || 0,
-            forks_count: repo.forks_count || 0,
-            topics: [],
-            pushed_at: repo.pushed_at || '',
-            created_at: repo.created_at || '',
-            updated_at: repo.updated_at || '',
-            size: repo.size || 0,
-            default_branch: repo.default_branch || 'main',
-          };
-        }
+        // Skip fetching topics to avoid 403 errors, use empty array
+        // Topics API requires specific permissions
+        return {
+          name: repo.name,
+          full_name: repo.full_name,
+          description: repo.description,
+          language: repo.language || null,
+          stargazers_count: repo.stargazers_count || 0,
+          forks_count: repo.forks_count || 0,
+          topics: [], // Topics not available without specific scope
+          pushed_at: repo.pushed_at || '',
+          created_at: repo.created_at || '',
+          updated_at: repo.updated_at || '',
+          size: repo.size || 0,
+          default_branch: repo.default_branch || 'main',
+        };
       })
     );
 
@@ -257,6 +236,7 @@ export function analyzeUserSkills(repos: GitHubRepo[], profile: GitHubUserProfil
 
 /**
  * Get user contribution stats using GraphQL
+ * Note: This may fail with 403 if token doesn't have required scopes
  */
 export async function fetchContributionStats(username: string): Promise<{
   totalContributions: number;
@@ -289,8 +269,9 @@ export async function fetchContributionStats(username: string): Promise<{
       totalContributions: response.user.contributionsCollection.contributionCalendar.totalContributions,
       restrictedContributions: response.user.contributionsCollection.restrictedContributionsCount,
     };
-  } catch (error) {
-    console.error('Error fetching contribution stats:', error);
+  } catch {
+    // Silently fail - contribution stats are optional
+    console.log('Note: Contribution stats unavailable (requires additional GitHub token scopes)');
     return null;
   }
 }
