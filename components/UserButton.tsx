@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { AlertCircleIcon, LogOut, Settings, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -77,6 +77,20 @@ export function UserButton({ user }: UserButtonProps) {
           <Link href="/profile">
             <UserIcon className="mr-2 h-4 w-4" />
             <span>Profile</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/preferences">
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Preferences</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/issues">
+            <AlertCircleIcon className="mr-2 h-4 w-4" />
+            <span>Issues</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

@@ -85,6 +85,9 @@ export function Team() {
               <Image 
                 src={"/team_logo.png"} 
                 alt="The Code Squad Logo" 
+                width={256}
+                height={256}
+                priority
                 className="w-64 h-auto mx-auto opacity-90 hover:opacity-100 transition-opacity duration-300"
               />
             </div>

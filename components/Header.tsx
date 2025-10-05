@@ -1,7 +1,7 @@
 'use client';
 import { useState } from "react";
 import Link from "next/link";
-import { Rocket, Menu, X, Github } from "lucide-react";
+import { Rocket, Menu, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 
