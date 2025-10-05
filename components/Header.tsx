@@ -103,14 +103,14 @@ export function Header() {
               <div className="flex justify-center mb-2">
                 <ThemeToggle />
               </div>
-              <Button 
+              {/* <Button 
                 variant="outline" 
                 size="sm"
                 className="glass border-border text-foreground hover:border-primary/50 justify-start"
               >
                 <Github className="w-4 h-4 mr-2" />
                 Sign in with GitHub
-              </Button>
+              </Button> */}
               <Button 
                 size="sm"
                 asChild

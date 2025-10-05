@@ -113,8 +113,10 @@ export interface TrendingIssue extends Issue {
 export interface UserPreferencesUpdate {
   languages?: string[];
   interests?: string[];
-  career_path?: string;
-  experience_level?: 'beginner' | 'intermediate' | 'advanced';
+  career_path?: string | null;
+  experience_level?: 'beginner' | 'intermediate' | 'advanced' | null;
+  github_profile_synced?: boolean;
+  github_profile_synced_at?: string;
 }
 
 export interface UserProfileUpdate {
