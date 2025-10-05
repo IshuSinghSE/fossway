@@ -1,14 +1,26 @@
 'use client';
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Search, Star, GitBranch, Clock, ExternalLink, Github, X, RefreshCw, Bookmark, BookmarkCheck } from "lucide-react";
+import { ArrowLeft, Search, Star, GitBranch, Clock, ExternalLink, Github, X, RefreshCw, Bookmark, BookmarkCheck, Sparkles } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 import { trackActivity } from "@/services/activity";
 import { saveIssue, unsaveIssue } from "@/services/saved-issues";
 import type { User } from "@supabase/supabase-js";
 import type { UserPreferences } from "@/lib/types/database";
+import { mockIssues } from "@/lib/data";
+import { getLanguageColor, getDifficultyColor, formatStars, formatRelativeTime } from "@/lib/utils/issue-helpers";
 
 interface Issue {
   id: string;
@@ -41,78 +53,6 @@ interface IssueDiscoveryProps {
   availableContributions: OptionItem[];
 }
 
-const mockIssues: Issue[] = [
-  {
-    id: "1",
-    title: "Add dark mode toggle to documentation website",
-    repository: "awesome-docs/website",
-    description: "We need to implement a dark mode toggle for better user experience. The toggle should be persistent across sessions.",
-    language: "JavaScript",
-    difficulty: "Beginner",
-    stars: 1250,
-    timeEstimate: "2-4 hours",
-    labels: ["good first issue", "documentation", "frontend"],
-    author: "docsMaintainer",
-    createdAt: "2 days ago",
-    url: "https://github.com/awesome-docs/website/issues/123"
-  },
-  {
-    id: "2",
-    title: "Fix responsive layout issue on mobile devices",
-    repository: "react-components/ui-library",
-    description: "The card component doesn't display correctly on mobile screens. Need to adjust CSS media queries.",
-    language: "CSS",
-    difficulty: "Beginner",
-    stars: 890,
-    timeEstimate: "1-3 hours",
-    labels: ["bug", "css", "mobile", "good first issue"],
-    author: "uiTeam",
-    createdAt: "1 day ago",
-    url: "https://github.com/react-components/ui-library/issues/456"
-  },
-  {
-    id: "3",
-    title: "Implement user authentication with JWT",
-    repository: "backend-api/auth-service",
-    description: "Need to add JWT-based authentication to the API. Include login, logout, and token refresh endpoints.",
-    language: "Python",
-    difficulty: "Intermediate",
-    stars: 2340,
-    timeEstimate: "8-12 hours",
-    labels: ["enhancement", "backend", "authentication"],
-    author: "apiMaintainer",
-    createdAt: "3 days ago",
-    url: "https://github.com/backend-api/auth-service/issues/789"
-  },
-  {
-    id: "4",
-    title: "Add TypeScript support to existing JavaScript project",
-    repository: "legacy-app/frontend",
-    description: "Gradually migrate the codebase to TypeScript. Start with utility functions and components.",
-    language: "TypeScript",
-    difficulty: "Intermediate",
-    stars: 567,
-    timeEstimate: "10-15 hours",
-    labels: ["typescript", "migration", "enhancement"],
-    author: "frontendLead",
-    createdAt: "5 days ago",
-    url: "https://github.com/legacy-app/frontend/issues/321"
-  },
-  {
-    id: "5",
-    title: "Optimize database queries for better performance",
-    repository: "data-analytics/dashboard",
-    description: "Several database queries are taking too long. Need to analyze and optimize for better performance.",
-    language: "SQL",
-    difficulty: "Advanced",
-    stars: 1890,
-    timeEstimate: "15-20 hours",
-    labels: ["performance", "database", "optimization"],
-    author: "dbAdmin",
-    createdAt: "1 week ago",
-    url: "https://github.com/data-analytics/dashboard/issues/654"
-  }
-];
 
 const difficulties = ["All", "Beginner", "Intermediate", "Advanced"];
 const timeRanges = ["All", "1-3 hours", "4-8 hours", "8+ hours"];
@@ -127,7 +67,12 @@ export function IssueDiscovery({
   const [selectedDifficulty, setSelectedDifficulty] = useState("All");
   const [selectedTimeRange, setSelectedTimeRange] = useState("All");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [savedIssueIds, setSavedIssueIds] = useState<Set<string>>(new Set());
+  const [issues, setIssues] = useState<Issue[]>(mockIssues);
+  const [showingRealData, setShowingRealData] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [availableIssuesCount, setAvailableIssuesCount] = useState(0);
 
   // Generate language options from available languages
   const languages = ["All", ...availableLanguages.map(lang => lang.label)];
@@ -157,7 +102,124 @@ export function IssueDiscovery({
     }
   }, [preferences]);
 
-  const filteredIssues = mockIssues.filter(issue => {
+  // Fetch real repository data from database
+  const fetchRealRepositories = async () => {
+    try {
+      const response = await fetch('/api/repos/fetch?type=beginner&limit=50');
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        // Transform repository data to match Issue interface
+        const transformedIssues: Issue[] = result.data.map((repo: Record<string, unknown>, index: number) => ({
+          id: String(repo.id || index),
+          title: `Contribute to ${repo.name}`,
+          repository: String(repo.repo_name || ''),
+          description: String(repo.description || 'No description available'),
+          language: String(repo.language || 'Multiple'),
+          difficulty: (typeof repo.stars === 'number' && repo.stars > 10000 ? 'Intermediate' : 'Beginner') as 'Beginner' | 'Intermediate' | 'Advanced',
+          stars: typeof repo.stars === 'number' ? repo.stars : 0,
+          timeEstimate: '2-4 hours',
+          labels: [...(Array.isArray(repo.topics) ? repo.topics : []), 'good first issue'],
+          author: String(repo.owner || ''),
+          createdAt: repo.pushed_at ? new Date(String(repo.pushed_at)).toLocaleDateString() : 'Recently',
+          url: String(repo.url || ''),
+          isSaved: false,
+        }));
+        
+        setIssues(transformedIssues);
+        setShowingRealData(true);
+      }
+    } catch (error) {
+      console.error('Error fetching real repositories:', error);
+      // Keep using mock data on error
+    }
+  };
+
+  // Real-time GitHub search with API
+  const searchGitHubIssues = async (query: string, language: string) => {
+    if (query.length < 3) {
+      // Reset to mock data if query is too short
+      setIssues(mockIssues);
+      setShowingRealData(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const params = new URLSearchParams({
+        q: query,
+        type: 'issues',
+        limit: '30',
+      });
+      
+      if (language !== 'All') {
+        params.append('language', language.toLowerCase());
+      }
+
+      const response = await fetch(`/api/search/github?${params.toString()}`);
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        // Transform GitHub search results to Issue interface
+        const transformedIssues: Issue[] = result.data.map((item: {
+          id: string;
+          title: string;
+          repository: string;
+          description: string | null;
+          language: string | null;
+          stars: number;
+          url: string;
+          created_at: string;
+          author: string;
+          labels: string[];
+        }) => ({
+          id: item.id,
+          title: item.title,
+          repository: item.repository,
+          description: item.description || 'No description available',
+          language: item.language || 'Multiple',
+          difficulty: 'Beginner' as const,
+          stars: item.stars,
+          timeEstimate: '2-4 hours',
+          labels: item.labels.length > 0 ? item.labels : ['good first issue'],
+          author: item.author,
+          createdAt: formatRelativeTime(item.created_at),
+          url: item.url,
+          isSaved: false,
+        }));
+        
+        setIssues(transformedIssues);
+        setShowingRealData(true);
+      }
+    } catch (error) {
+      console.error('Error searching GitHub:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Debounced search effect (500ms delay)
+  useEffect(() => {
+    if (searchQuery.length === 0) {
+      // Reset to mock data when search is cleared
+      setIssues(mockIssues);
+      setShowingRealData(false);
+      return;
+    }
+
+    if (searchQuery.length < 3) {
+      // Don't search until at least 3 characters
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      searchGitHubIssues(searchQuery, selectedLanguage);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, selectedLanguage]);
+
+  const filteredIssues = issues.filter(issue => {
     const matchesSearch = issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          issue.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          issue.repository.toLowerCase().includes(searchQuery.toLowerCase());
@@ -173,12 +235,43 @@ export function IssueDiscovery({
     return matchesSearch && matchesLanguage && matchesDifficulty && matchesTimeRange;
   });
 
-  const handleRefresh = () => {
+  // Check if filters are active and no results found
+  useEffect(() => {
+    const hasActiveFilters = selectedLanguage !== "All" || 
+                            selectedDifficulty !== "All" || 
+                            selectedTimeRange !== "All" ||
+                            searchQuery.length > 0;
+    
+    if (hasActiveFilters && filteredIssues.length === 0 && !isLoading && !isSearching) {
+      // Calculate how many issues would be available if we reset filters
+      const availableCount = issues.length;
+      if (availableCount > 0) {
+        setAvailableIssuesCount(availableCount);
+        setShowResetDialog(true);
+      }
+    }
+  }, [filteredIssues.length, selectedLanguage, selectedDifficulty, selectedTimeRange, searchQuery, isLoading, isSearching, issues.length]);
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSelectedLanguage("All");
+    setSelectedDifficulty("All");
+    setSelectedTimeRange("All");
+    setShowResetDialog(false);
+  };
+
+  const handleRefresh = async () => {
     setIsLoading(true);
-    // In production, this would fetch from GitHub API and cache in database
-    setTimeout(() => {
+    try {
+      // First, trigger a refresh of repository data from GitHub
+      await fetch('/api/repos/refresh', { method: 'POST' });
+      // Then fetch the updated data
+      await fetchRealRepositories();
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
       setIsLoading(false);
-    }, 2000);
+    }
   };
 
   const handleIssueClick = async (issueId: string) => {
@@ -215,17 +308,8 @@ export function IssueDiscovery({
     }
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Beginner': return 'bg-green-400/20 text-green-400 border-green-400/30';
-      case 'Intermediate': return 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30';
-      case 'Advanced': return 'bg-red-400/20 text-red-400 border-red-400/30';
-      default: return 'bg-white/20 text-white border-white/30';
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-background text-foreground pt-20">
+    <div className="min-h-screen bg-background text-foreground pt-20 px-4 md:px-20">
       {/* Header */}
       <div className="container mx-auto px-6 py-8">
         <Button 
@@ -238,6 +322,26 @@ export function IssueDiscovery({
             Back to Home
           </Link>
         </Button>
+
+        {/* Real Data Banner */}
+        {showingRealData && (
+          <div className="glass rounded-lg p-4 border border-green-400/30 bg-green-400/10 mb-8 flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+            <p className="text-green-400 text-sm">
+              🎉 Showing live data from GitHub! {filteredIssues.length} {searchQuery ? 'search results' : 'repositories'} available.
+            </p>
+          </div>
+        )}
+
+        {/* Searching Indicator */}
+        {isSearching && (
+          <div className="glass rounded-lg p-4 border border-cyan-400/30 bg-cyan-400/10 mb-8 flex items-center gap-3">
+            <div className="w-4 h-4 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin"></div>
+            <p className="text-cyan-400 text-sm">
+              Searching GitHub for &ldquo;{searchQuery}&rdquo;...
+            </p>
+          </div>
+        )}
 
         {/* Page Header */}
         <div className="text-center mb-12">
@@ -277,18 +381,23 @@ export function IssueDiscovery({
       </div>
 
       {/* Filters Section */}
-      <div className="container mx-auto px-6 mb-8">
+      <div className="container mx-auto px-6 mb-8 md:px-32">
         <div className="glass rounded-2xl p-6 border border-white/10">
           <div className="space-y-6">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
               <Input
-                placeholder="Search issues, repositories, or descriptions..."
+                placeholder="Search issues on GitHub (type 3+ characters for real-time search)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-12 glass border-white/20 text-white placeholder:text-white/50"
               />
+              {isSearching && (
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                  <div className="w-4 h-4 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin"></div>
+                </div>
+              )}
             </div>
 
             {/* Filter Row */}
@@ -407,80 +516,80 @@ export function IssueDiscovery({
               </div>
             </div>
 
-            <div className="grid gap-6">
-              {filteredIssues.map((issue) => (
-                <div key={issue.id} className="glass rounded-2xl p-6 border border-white/10 hover:scale-[1.02] transition-all duration-300 group">
-                  <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredIssues.map((issue) => {
+                const langColor = getLanguageColor(issue.language);
+                const diffColor = getDifficultyColor(issue.difficulty);
+                
+                return (
+                  <div key={issue.id} className="glass rounded-xl p-4 border border-white/10 hover:scale-[1.02] hover:border-cyan-400/30 transition-all duration-300 group flex flex-col">
                     {/* Header */}
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-white group-hover:text-cyan-400 transition-colors duration-300 mb-2">
-                          {issue.title}
-                        </h3>
-                        <div className="flex items-center gap-4 text-white/60 text-sm">
-                          <div className="flex items-center gap-1">
-                            <Github className="w-4 h-4" />
-                            {issue.repository}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Star className="w-4 h-4" />
-                            {issue.stars}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {issue.timeEstimate}
-                          </div>
-                        </div>
-                      </div>
-                      <Badge className={`${getDifficultyColor(issue.difficulty)} glass border`}>
+                    <div className="flex justify-between items-start gap-2 mb-3">
+                      <h3 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors duration-300 line-clamp-2 flex-1">
+                        {issue.title}
+                      </h3>
+                      <Badge className={`${diffColor} glass border shrink-0 text-xs`}>
                         {issue.difficulty}
                       </Badge>
                     </div>
 
+                    {/* Repository & Stats */}
+                    <div className="flex items-center gap-3 text-white/60 text-xs mb-3">
+                      <div className="flex items-center gap-1 truncate">
+                        <Github className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{issue.repository}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Star className="w-3 h-3" />
+                        {formatStars(issue.stars)}
+                      </div>
+                    </div>
+
                     {/* Description */}
-                    <p className="text-white/70 leading-relaxed">
+                    <p className="text-white/70 text-sm leading-relaxed line-clamp-2 mb-3 flex-1">
                       {issue.description}
                     </p>
 
                     {/* Labels */}
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline" className="glass border-white/20 text-white/70">
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      <Badge variant="outline" className={`${langColor.bg} ${langColor.text} ${langColor.border} border text-xs`}>
                         {issue.language}
                       </Badge>
-                      {issue.labels.map((label, index) => (
-                        <Badge key={index} variant="outline" className="glass border-white/20 text-white/60 text-xs">
+                      {issue.labels.slice(0, 2).map((label, index) => (
+                        <Badge key={index} variant="outline" className="glass border-white/20 text-white/60 text-[10px] px-1.5 py-0">
                           {label}
                         </Badge>
                       ))}
+                      {issue.labels.length > 2 && (
+                        <Badge variant="outline" className="glass border-white/20 text-white/60 text-[10px] px-1.5 py-0">
+                          +{issue.labels.length - 2}
+                        </Badge>
+                      )}
                     </div>
 
                     {/* Footer */}
-                    <div className="flex justify-between items-center pt-4 border-t border-white/10">
-                      <div className="text-white/60 text-sm">
-                        Created {issue.createdAt} by {issue.author}
+                    <div className="flex justify-between items-center pt-3 border-t border-white/10 mt-auto">
+                      <div className="flex items-center gap-1 text-white/60 text-xs">
+                        <Clock className="w-3 h-3" />
+                        {issue.createdAt}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1.5">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleSaveToggle(issue.id)}
-                          className="glass border-white/20 hover:border-cyan-400/50"
+                          className="glass border-white/20 hover:border-cyan-400/50 h-8 px-2"
                         >
                           {savedIssueIds.has(issue.id) ? (
-                            <>
-                              <BookmarkCheck className="w-4 h-4 mr-2 text-cyan-400" />
-                              Saved
-                            </>
+                            <BookmarkCheck className="w-3.5 h-3.5 text-cyan-400" />
                           ) : (
-                            <>
-                              <Bookmark className="w-4 h-4 mr-2" />
-                              Save
-                            </>
+                            <Bookmark className="w-3.5 h-3.5" />
                           )}
                         </Button>
                         <Button
                           asChild
-                          className="bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-500 hover:to-purple-600 text-white border-0 group/btn"
+                          size="sm"
+                          className="bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-500 hover:to-purple-600 text-white border-0 group/btn h-8 px-3 text-xs"
                         >
                           <a 
                             href={issue.url} 
@@ -488,15 +597,15 @@ export function IssueDiscovery({
                             rel="noopener noreferrer"
                             onClick={() => handleIssueClick(issue.id)}
                           >
-                            View Issue
-                            <ExternalLink className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                            View
+                            <ExternalLink className="w-3 h-3 ml-1 group-hover/btn:translate-x-0.5 transition-transform duration-300" />
                           </a>
                         </Button>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {filteredIssues.length === 0 && (
@@ -511,6 +620,40 @@ export function IssueDiscovery({
           </>
         )}
       </div>
+
+      {/* Reset Filters Dialog */}
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent className="glass border-white/20 bg-background/95 backdrop-blur-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-cyan-400" />
+              No Matches Found, But...
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-white/70 text-base space-y-3">
+              <p>
+                🤔 Hmm, your current filters are a bit too picky! No issues match your criteria.
+              </p>
+              <p className="text-lg font-semibold text-white">
+                But wait! I&apos;ve got <span className="text-cyan-400">{availableIssuesCount} awesome issues</span> ready for you! 🎉
+              </p>
+              <p>
+                Want me to reset your filters and show you all the cool stuff you could be working on?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="glass border-white/20 text-white hover:bg-white/10">
+              Nah, I&apos;ll keep looking
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleResetFilters}
+              className="bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-500 hover:to-purple-600 text-white border-0"
+            >
+              Yes, show me the issues! 🚀
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
